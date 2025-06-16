@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String      @id @default(cuid())
+  name       String?
+  email      String      @unique
+  image      String?
+  reviews    Review[]
+  ratings    Rating[]
+  watchLists WatchList[]
+  createdAt  DateTime    @default(now())
+}
+
+model Movie {
+  id        Int      @id
+  title     String
+  posterUrl String?
+  year      Int?
+  reviews   Review[]
+  ratings   Rating[]
+
+  watchLists WatchList[] @relation("WatchListMovies") // <-- BU SATIRI EKLE
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  movie     Movie    @relation(fields: [movieId], references: [id])
+  movieId   Int
+  rating    Int? // 1-5 yıldız opsiyonel
+  body      String   @db.Text
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  movie     Movie    @relation(fields: [movieId], references: [id])
+  movieId   Int
+  value     Int // 1-5
+  createdAt DateTime @default(now())
+
+  @@unique([userId, movieId]) // tek oy kuralı
+}
+
+model WatchList {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  name      String // “Watchlist”, “2025 Favourites” vs.
+  movies    Movie[]  @relation("WatchListMovies")
+  createdAt DateTime @default(now())
+}
