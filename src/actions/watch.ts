@@ -110,3 +110,56 @@ export async function toggleWatched(movieId: number) {
 
   revalidatePath(`/film/${movieId}`);
 }
+/* ------------------------------------------------------------------
+   Toggle movie inside a given list
+-------------------------------------------------------------------*/
+/* ------------------------------------------------------------------
+   Toggle movie inside a given list
+   – If movie row doesn't exist, create it on the fly.
+-------------------------------------------------------------------*/
+export async function addOrRemoveFromList(
+  listId: string,
+  movie: {
+    id: number;
+    title: string;
+    poster: string;
+    year: number;
+  }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthenticated");
+
+  // Check current state
+  const already = await prisma.watchList.findFirst({
+    where: { id: listId, movies: { some: { id: movie.id } } },
+    select: { id: true },
+  });
+
+  if (already) {
+    // → remove
+    await prisma.watchList.update({
+      where: { id: listId },
+      data: { movies: { disconnect: { id: movie.id } } },
+    });
+    return { added: false };
+  } else {
+    // ensure Movie exists (upsert)
+    await prisma.movie.upsert({
+      where: { id: movie.id },
+      update: {},
+      create: {
+        id: movie.id,
+        title: movie.title,
+        posterUrl: movie.poster,
+        year: movie.year,
+      },
+    });
+
+    // connect
+    await prisma.watchList.update({
+      where: { id: listId },
+      data: { movies: { connect: { id: movie.id } } },
+    });
+    return { added: true };
+  }
+}

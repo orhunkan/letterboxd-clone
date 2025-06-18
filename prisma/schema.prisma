@@ -117,7 +117,18 @@ model WatchList {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id])
   userId    String
-  name      String // “Watchlist”, “2025 Favourites” vs.
+  name      String
+  description String?           // new
+  tags        String?           // comma-separated
+  visibility  Visibility @default(PUBLIC) // new
+  ranked      Boolean    @default(false)  // new
   movies    Movie[]  @relation("WatchListMovies")
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 }
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  FRIENDS
+}
+
