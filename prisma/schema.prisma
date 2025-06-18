@@ -74,17 +74,18 @@ model Movie {
 
   watchLists WatchList[] @relation("WatchListMovies") // <-- BU SATIRI EKLE
 }
-
 model Review {
   id        String   @id @default(cuid())
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   movie     Movie    @relation(fields: [movieId], references: [id])
   movieId   Int
-  rating    Int? // 1-5 yıldız opsiyonel
+  rating    Int?
   body      String   @db.Text
   likes     Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@unique([authorId, movieId]) // <- TEK review kuralı
 }
 
 model Rating {

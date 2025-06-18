@@ -6,6 +6,9 @@ const nextConfig = {
         hostname: "image.tmdb.org",
       },
     ],
+    domains : [
+      "media.wired.com","i.insider.com","npr.brightspotcdn.com","gizmodo.com","a.espncdn.com"
+    ]
   },
 
   serverExternalPackages: ["@prisma/client"],
