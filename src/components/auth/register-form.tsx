@@ -46,17 +46,16 @@ export default function RegisterForm() {
       return
     }
 
-    const data = await res.json()
-    if (res.status === 201) {
-      toast.success("Account created! Please sign in.")
-      router.push("/login")
-    } else if (res.status === 409) {
-      toast.error("Email is already in use.")
-    } else {
-      const { error } = await res.json()
-      toast.error(error ?? "Something went wrong.")
-    }
+      const result = await res.json();
 
+      if (res.status === 201) {
+        toast.success("Account created! Please sign in.");
+        router.push("/login");
+      } else if (res.status === 409) {
+        toast.error("Email is already in use.");
+      } else {
+        toast.error(result?.error ?? "Something went wrong.");
+      }
   }
 
   return (
@@ -106,7 +105,7 @@ export default function RegisterForm() {
 
       <p className="text-center text-gray-400 text-sm">
         Already have an account?{" "}
-        <Link href="/auth/login" className="text-green-400 hover:underline">
+        <Link href="/login" className="text-green-400 hover:underline">
           Sign in
         </Link>
       </p>
