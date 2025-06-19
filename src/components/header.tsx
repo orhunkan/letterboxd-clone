@@ -23,7 +23,7 @@ export default function Header() {
             <Link href="/" className="text-gray-100">
               Films
             </Link>             
-            <Link href="/" className="text-gray-100">
+            <Link href="/lists/" className="text-gray-100">
               Lists
             </Link>            
             <Link href="/" className="text-gray-100">
