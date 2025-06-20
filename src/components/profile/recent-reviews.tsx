@@ -1,23 +1,15 @@
-import { Star, Heart, MessageCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { Star, Heart, MessageCircle } from "lucide-react"
+import { getRecentReviews } from "@/lib/db"
 
-const recentReviews = [
-  {
-    id: 1,
-    title: "The Phoenician Scheme",
-    year: 2025,
-    poster: "/placeholder.svg?height=120&width=80&text=The+Phoenician+Scheme",
-    rating: 4,
-    watchedDate: "11 Jun 2025",
-    review:
-      "A masterfully crafted thriller that keeps you guessing until the very end. The cinematography is stunning and the performances are top-notch.",
-    likes: 12,
-    comments: 3,
-  },
-]
+interface Props {
+  username: string
+}
 
-export default function RecentReviews() {
+export default async function RecentReviews({ username }: Props) {
+  const reviews = await getRecentReviews(username)
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -28,12 +20,12 @@ export default function RecentReviews() {
       </div>
 
       <div className="space-y-6">
-        {recentReviews.map((review) => (
+        {reviews.map((review) => (
           <div key={review.id} className="bg-[#1c2228] rounded-lg p-6">
             <div className="flex space-x-4">
-              <Link href={`/film/${review.id}`} className="flex-shrink-0">
+              <Link href={`/film/${review.movieId}`} className="flex-shrink-0">
                 <Image
-                  src={review.poster || "/placeholder.svg"}
+                  src={review.posterUrl ?? "/placeholder.svg"}
                   alt={review.title}
                   width={80}
                   height={120}
@@ -44,7 +36,7 @@ export default function RecentReviews() {
               <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Link href={`/film/${review.id}`} className="text-xl font-bold text-white hover:text-green-400">
+                    <Link href={`/film/${review.movieId}`} className="text-xl font-bold text-white hover:text-green-400">
                       {review.title}
                     </Link>
                     <span className="text-gray-400 ml-2">{review.year}</span>

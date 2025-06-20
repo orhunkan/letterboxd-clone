@@ -2,7 +2,8 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { getFilmById } from "@/lib/tmdb"; // TMDB fetch helper
 import { revalidatePath } from "next/cache";
 
 /* -------------------------------------------------------
@@ -32,7 +33,6 @@ export async function toggleWatchlist(movieId: number) {
     include: { movies: true },
   });
 
-  // Create default watchlist if it doesn't exist
   if (!list) {
     await prisma.watchList.create({
       data: {
@@ -55,7 +55,6 @@ export async function toggleWatchlist(movieId: number) {
     },
   });
 
-  // When adding to watchlist, ensure it's not marked as watched
   if (!inList) {
     await prisma.watchedMovie.deleteMany({
       where: { userId, movieId },
@@ -67,31 +66,44 @@ export async function toggleWatchlist(movieId: number) {
 
 /* -------------------------------------------------------
    toggleWatched — mark / unmark movie as watched
+   • Ensures Movie row exists (upsert via TMDB)
 --------------------------------------------------------*/
 export async function toggleWatched(movieId: number) {
   const userId = await getUserId();
 
-  const existing = await prisma.watchedMovie.findUnique({
+  /* 1. make sure Movie row exists */
+  const exists = await prisma.movie.findUnique({ where: { id: movieId } });
+  if (!exists) {
+    const film = await getFilmById(movieId.toString());
+    if (!film) throw new Error("TMDB fetch failed");
+
+    await prisma.movie.create({
+      data: {
+        id: film.id,
+        title: film.title,
+        posterUrl: film.poster,
+        year: film.year ?? null,
+      },
+    });
+  }
+
+  /* 2. toggle WatchedMovie */
+  const watched = await prisma.watchedMovie.findUnique({
     where: { userId_movieId: { userId, movieId } },
   });
 
-  if (existing) {
-    // Un-watch → remove record
-    await prisma.watchedMovie.delete({ where: { id: existing.id } });
+  if (watched) {
+    await prisma.watchedMovie.delete({ where: { id: watched.id } });
   } else {
-    // Watch → create record
     await prisma.watchedMovie.create({
       data: { userId, movieId },
     });
 
-    // Instead of updateMany → find and update one-by-one
     const lists = await prisma.watchList.findMany({
       where: {
         userId,
         name: "Watchlist",
-        movies: {
-          some: { id: movieId },
-        },
+        movies: { some: { id: movieId } },
       },
       select: { id: true },
     });
@@ -99,67 +111,53 @@ export async function toggleWatched(movieId: number) {
     for (const list of lists) {
       await prisma.watchList.update({
         where: { id: list.id },
-        data: {
-          movies: {
-            disconnect: { id: movieId },
-          },
-        },
+        data: { movies: { disconnect: { id: movieId } } },
       });
     }
   }
 
   revalidatePath(`/film/${movieId}`);
 }
-/* ------------------------------------------------------------------
-   Toggle movie inside a given list
--------------------------------------------------------------------*/
-/* ------------------------------------------------------------------
-   Toggle movie inside a given list
-   – If movie row doesn't exist, create it on the fly.
--------------------------------------------------------------------*/
+
+/* -------------------------------------------------------
+   addOrRemoveFromList — toggle movie in arbitrary list
+   • Upserts Movie if missing
+--------------------------------------------------------*/
 export async function addOrRemoveFromList(
   listId: string,
-  movie: {
-    id: number;
-    title: string;
-    poster: string;
-    year: number;
-  }
+  movie: { id: number; title: string; poster: string; year: number | null }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthenticated");
 
-  // Check current state
   const already = await prisma.watchList.findFirst({
     where: { id: listId, movies: { some: { id: movie.id } } },
     select: { id: true },
   });
 
   if (already) {
-    // → remove
     await prisma.watchList.update({
       where: { id: listId },
       data: { movies: { disconnect: { id: movie.id } } },
     });
     return { added: false };
-  } else {
-    // ensure Movie exists (upsert)
-    await prisma.movie.upsert({
-      where: { id: movie.id },
-      update: {},
-      create: {
-        id: movie.id,
-        title: movie.title,
-        posterUrl: movie.poster,
-        year: movie.year,
-      },
-    });
-
-    // connect
-    await prisma.watchList.update({
-      where: { id: listId },
-      data: { movies: { connect: { id: movie.id } } },
-    });
-    return { added: true };
   }
+
+  await prisma.movie.upsert({
+    where: { id: movie.id },
+    update: {},
+    create: {
+      id: movie.id,
+      title: movie.title,
+      posterUrl: movie.poster,
+      year: movie.year,
+    },
+  });
+
+  await prisma.watchList.update({
+    where: { id: listId },
+    data: { movies: { connect: { id: movie.id } } },
+  });
+
+  return { added: true };
 }

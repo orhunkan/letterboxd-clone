@@ -27,7 +27,7 @@ export default function ProfileNavigation() {
           {navItems.map((item) => (
             <Link
               key={item.name}
-              href={item.href}
+              href={""}
               className={`py-4 text-sm font-medium border-b-2 transition-colors ${
                 pathname === item.href || (pathname === "/profile/orhunkandemir" && item.name === "Profile")
                   ? "border-green-500 text-white"
